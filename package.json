@@ -1,0 +1,12 @@
+{
+  "name": "find-in-page-with-preview",
+  "version": "0.1.0",
+  "description": "Find in page and show preview images.",
+  "scripts": {},
+  "author": "Yusuke Takeuchi",
+  "license": "MIT",
+  "dependencies": {
+    "rtree": "^1.4.2"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,7 @@
+.fipwp-goto-target-element::before {
+  display : none !important;
+}
+
+.fipwp-goto-target-element::after {
+  display : none !important;
+}

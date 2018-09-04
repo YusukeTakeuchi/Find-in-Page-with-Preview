@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="index.css">
+  </head>
+  <body>
+    <div>
+      <div id="search-input-container">
+        <div class="block-container">
+          <span id="search-text-input-container">
+            <input type="text" id="search-text-input" placeholder="Search" autofocus>
+          </span>
+          <label title="Toggle options"><input type=checkbox id="search-options-toggle-show"><span>⚙️</span></label>
+          <output id="count-output" value=""></output>
+        </div>
+        <div class="block-container" id="search-options-container">
+          <label><input type=checkbox id="case-sensitive-checkbox">Match Case</label>
+          <label><input type=checkbox id="entire-word-checkbox">Entire Word</label>
+          <button class="action-button" id="find-again-button" title="Find Again">▶️</button>
+          <button class="action-button" id="reset-button" title="Reset">❎</button>
+        </div>
+        <div id="message-container" class="message-state-none"></div>
+      </div>
+      <div id="search-results-container"></div>
+    </div>
+    <script src="/util/messaging.js"></script>
+    <script src="/util/cancellable-delay.js"></script>
+    <script src="/util/mutex.js"></script>
+    <script src="/util/timestamp.js"></script>
+    <script src="/lib/rtree.js"></script>
+    <script src="/options/store.js"></script>
+    <script src="./finder.js"></script>
+    <script src="./clustering.js"></script>
+    <script src="./find-window.js"></script>
+  </body>
+</html>

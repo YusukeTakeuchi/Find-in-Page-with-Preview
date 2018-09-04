@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="./options.css">
+    <script src="./store.js"></script>
+    <script src="./options.js"></script>
+  </head>
+  <body>
+    <form id="main-form">
+
+      <section>
+        <h2>Smooth scroll</h2>
+        <div>
+          <label><input type=checkbox name="useSmoothScroll">Use smooth scroll</label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Preview range size</h2>
+        <div>
+          <span class="lb">Width</span><input type=number name="previewWidth" min="100">
+        </div>
+        <div>
+          <span class="lb">Height</span><input type=number name="previewHeight" min="40">
+        </div>
+      </section>
+
+      <section>
+        <h2>Image size</h2>
+        <div>
+          <label><input type=checkbox name="imageSizeSameAsPreview">Same as Preview range size</label>
+        </div>
+        <fieldset name="groupImageSize">
+          <div>
+            <span class="lb">Width</span><input type=number name="imageWidth" min="100">
+          </div>
+          <div>
+            <span class="lb">Height</span><input type=number name="imageHeight" min="40">
+          </div>
+        </fieldset>
+      </section>
+
+    </form>
+  </body>
+</html>

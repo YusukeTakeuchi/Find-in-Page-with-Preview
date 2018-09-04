@@ -1,0 +1,64 @@
+{
+  "manifest_version": 2,
+  "name": "Find in Page with Preview",
+  "version": "0.1.0",
+
+  "applications": {
+    "gecko": {
+      "id": "{ac77876d-57ef-4257-b009-3448c48646b4}",
+      "strict_min_version": "57.0"
+    }
+  },
+
+  "description": "Find in page and show preview images around matches.",
+  "icons": {
+    "48": "img/icon.svg"
+  },
+
+  "permissions": [
+    "find",
+    "tabs",
+    "storage",
+    "<all_urls>"
+  ],
+
+  "content_scripts": [{
+    "matches": [
+      "<all_urls>"
+    ],
+    "js": [
+      "util/messaging.js",
+      "content-scripts/main.js"
+    ],
+    "css": [
+      "content-scripts/main.css"
+    ],
+    "run_at": "document_end"
+  }],
+
+  "browser_action": {
+    "default_icon": "img/icon.svg",
+    "default_title": "Find in Page with Preview",
+    "default_popup": "find-window/index.html?popup=1"
+  },
+
+  "sidebar_action": {
+    "default_icon": "img/icon.svg",
+    "default_title": "Find in Page with Preview",
+    "default_panel": "find-window/index.html"
+  },
+
+  "background": {
+    "scripts": [
+      "util/messaging.js",
+      "bg.js"
+    ]
+  },
+
+  "options_ui": {
+    "page": "options/options.html",
+    "browser_style": true
+  },
+
+  "content_security_policy": "script-src 'self' ; object-src 'self' ;"
+}

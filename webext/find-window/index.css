@@ -1,0 +1,137 @@
+body {
+  min-width : 300px;
+  min-height : 50px;
+  margin : 0;
+  padding : 0;
+  overflow-x : hidden;
+  background-color : #FEE;
+}
+
+.block-container {
+  margin : 0;
+  padding : 0;
+  border : 0;
+}
+
+.action-button {
+  background-color: inherit;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  padding: 0 4px;
+  appearance: none;
+}
+
+.action-button:hover {
+  background-color : #DDF;
+}
+
+#search-input-container {
+  position : sticky;
+  top : 0;
+  height : fit-content;
+  width : 100%;
+  margin : 0;
+  padding : 0;
+  background-color : white;
+}
+
+#search-input-container * {
+  vertical-align : middle;
+}
+
+
+#search-text-input-container {
+  display : inline-block;
+  width : 17em;
+  resize : horizontal;
+  overflow: hidden;
+  margin : 0;
+  padding : 0;
+}
+
+#search-text-input {
+  width : 100%;
+}
+
+#search-options-toggle-show{
+  display : none;
+}
+
+#search-options-toggle-show + *{
+  display : inline-block;
+  background-color : inherit;
+  cursor : pointer;
+  padding : 0 4px;
+}
+
+#search-options-toggle-show + *:hover{
+  background-color : #DDF;
+}
+
+#search-options-toggle-show:checked + *{
+}
+
+
+#search-options-container{
+  display : none;
+}
+
+#search-options-container > *{
+  margin-right : 1em;
+}
+
+#message-container {
+  display : none;
+  background-color : green;
+  color : white;
+  font-size : 24px;
+  padding : 10px;
+  width : 100%;
+}
+
+#message-container.message-show {
+  animation-name : fadeout;
+  animation-duration : 1s;
+  animation-delay : 3s;
+  animation-iteration-count : 1;
+  animation-fill-mode : forwards;
+  display : block;
+}
+
+@keyframes fadeout {
+  0% {
+    opacity : 1;
+  }
+
+  100% {
+    opacity : 0;
+  }
+}
+
+
+#search-results-container {
+  margin : 10px 10px 0 10px;
+}
+
+.search-result-item-a {
+  display : block;
+  margin : 0;
+  margin-bottom : 20px;
+  padding : 0;
+  cursor : pointer;
+}
+
+.search-result-item-img {
+  background-origin : content-box;
+  background-repeat : no-repeat;
+  overflow : hidden;
+  display : block;
+  margin : 0;
+  padding : 0;
+  border : 4px black solid;
+}
+
+.search-result-item-selected .search-result-item-img{
+  border : 4px red solid;
+}

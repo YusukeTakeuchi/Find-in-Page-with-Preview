@@ -1,0 +1,21 @@
+h2 {
+  font-size : large;
+  margin : 0 0 5px 0;
+}
+
+fieldset {
+  outline : 0;
+  border : 0;
+}
+
+section {
+  margin : 0 0 30px 0;
+  padding : 0;
+  border : 2px ridge gray;
+  padding : 10px;
+}
+
+.lb {
+  display : inline-block;
+  width : 5em;
+}
