@@ -4,7 +4,7 @@ body {
   margin : 0;
   padding : 0;
   overflow-x : hidden;
-  background-color : #FEE;
+  background-color : var(--bgColorSearchResult);
 }
 
 .block-container {
@@ -23,7 +23,7 @@ body {
 }
 
 .action-button:hover {
-  background-color : #DDF;
+  background-color : var(--bgColorSearchFormHover);
 }
 
 #search-input-container {
@@ -33,7 +33,8 @@ body {
   width : 100%;
   margin : 0;
   padding : 0;
-  background-color : white;
+  color : var(--fgColorSearchForm);
+  background-color : var(--bgColorSearchForm);
 }
 
 #search-input-container * {
@@ -52,6 +53,8 @@ body {
 
 #search-text-input {
   width : 100%;
+  color : var(--fgColorInput);
+  background-color : var(--bgColorInput);
 }
 
 #search-options-toggle-show{
@@ -66,7 +69,7 @@ body {
 }
 
 #search-options-toggle-show + *:hover{
-  background-color : #DDF;
+  background-color : var(--bgColorSearchFormHover);
 }
 
 #search-options-toggle-show:checked + *{

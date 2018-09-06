@@ -43,7 +43,16 @@ OptionStore = {
     imageSizeSameAsPreview: true,
 
     imageWidth: 400,
-    imageHeight : 150
+    imageHeight : 150,
+
+    fgColorInput: "#000000",
+    bgColorInput: "#ffffff",
+
+    fgColorSearchForm: "#000000",
+    bgColorSearchForm: "#ffffff",
+    bgColorSearchFormHover: "#ddddff",
+
+    bgColorSearchResult: "#ffeeee",
   },
 
   storageKey: "options"

@@ -318,6 +318,8 @@ async function startApp(){
   const options = await OptionStore.load(),
         searchParams = new URLSearchParams(location.search);
 
+  setStyles(options)
+
   new App({
     ...options,
     popupMode: parseInt(searchParams.get("popup")) > 0,
@@ -325,6 +327,22 @@ async function startApp(){
 }
 
 startApp();
+
+function setStyles(options){
+  const propNames = [
+          "fgColorInput",
+          "bgColorInput",
+          "fgColorSearchForm",
+          "bgColorSearchForm",
+          "bgColorSearchFormHover",
+          "bgColorSearchResult"
+        ],
+        root = document.documentElement;
+
+  for (const propName of propNames){
+    root.style.setProperty("--" + propName, options[propName]);
+  }
+}
 
 function makeClusterRanges(rectData, rangeData, clusterSize){
   const yesRects = [], // Array.<RectWithValue>
