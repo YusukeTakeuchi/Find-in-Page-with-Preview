@@ -6,6 +6,11 @@
  * @property {number} bottom
  **/
 
+PreviewMargin = {
+  width: 20,
+  height : 10
+};
+
 /** Take the screenshot for the specified range.
  *
  * @param {Rect} rect
@@ -141,16 +146,17 @@ class FindResultContext{
    * @private
    **/
   computeScreenshotStartPosForClusterCommon(xory, clusterRect, ranges, ssSize){
-    const {x, w, left, right, width} = {
-      x: { x: "x", w: "w", left: "left", right: "right", width: "width" },
-      y: { x: "y", w: "h", left: "top", right: "bottom", width: "height" }
+    const {x, w, left, right, width, clientWidth} = {
+      x: { x: "x", w: "w", left: "left", right: "right", width: "width", clientWidth: "clientWidth", },
+      y: { x: "y", w: "h", left: "top", right: "bottom", width: "height", clientWidth: "clientHeight" }
     }[xory] || ( () => { throw "x or y" } )();
 
     const clusterCenter = clusterRect[x] + clusterRect[w]/2;
 
     let xRangeContained = { // SS contains this
-          [left]: clusterRect[x],
-          [right]: clusterRect[x] + clusterRect[w],
+          [left]: Math.max(0, clusterRect[x] - PreviewMargin[width]),
+          [right]: Math.min(document.documentElement[clientWidth],
+                            clusterRect[x] + clusterRect[w] + PreviewMargin[width]),
         },
         xRangeContaining = null; // SS is contained by this
 
