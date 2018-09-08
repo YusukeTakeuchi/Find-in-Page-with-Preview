@@ -146,16 +146,16 @@ class FindResultContext{
    * @private
    **/
   computeScreenshotStartPosForClusterCommon(xory, clusterRect, ranges, ssSize){
-    const {x, w, left, right, width, clientWidth} = {
-      x: { x: "x", w: "w", left: "left", right: "right", width: "width", clientWidth: "clientWidth", },
-      y: { x: "y", w: "h", left: "top", right: "bottom", width: "height", clientWidth: "clientHeight" }
+    const {x, w, left, right, width, scrollWidth} = {
+      x: { x: "x", w: "w", left: "left", right: "right", width: "width", scrollWidth: "scrollWidth", },
+      y: { x: "y", w: "h", left: "top", right: "bottom", width: "height", scrollWidth: "scrollHeight" }
     }[xory] || ( () => { throw "x or y" } )();
 
     const clusterCenter = clusterRect[x] + clusterRect[w]/2;
 
     let xRangeContained = { // SS contains this
           [left]: Math.max(0, clusterRect[x] - PreviewMargin[width]),
-          [right]: Math.min(document.documentElement[clientWidth],
+          [right]: Math.min(document.documentElement[scrollWidth],
                             clusterRect[x] + clusterRect[w] + PreviewMargin[width]),
         },
         xRangeContaining = null; // SS is contained by this
