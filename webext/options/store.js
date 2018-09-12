@@ -34,7 +34,7 @@ OptionStore = {
     }
   },
 
-  defaultValues  :{
+  defaultValues  : {
     useSmoothScroll: true,
 
     previewWidth: 400,
@@ -53,6 +53,8 @@ OptionStore = {
     bgColorSearchFormHover: "#ddddff",
 
     bgColorSearchResult: "#ffeeee",
+
+    maxHistory: 20,
   },
 
   storageKey: "options"

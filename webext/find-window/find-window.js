@@ -15,6 +15,8 @@ class SearchResultsUI{
     this.noPreviewImageURL = null;
 
     this.tabId = null;
+
+    this.onSelected = new SimpleEvent;
   }
 
   setTabId(tabId){
@@ -40,24 +42,29 @@ class SearchResultsUI{
     const aElt = document.createElement("A");
     aElt.className = "search-result-item-a";
     aElt.appendChild(imgElt);
-    aElt.addEventListener("click", async () => {
-      this.setSelectedResult(aElt);
-      try{
-        await browser.tabs.update(this.tabId, {
-          active: true
-        });
-        await Messaging.sendToTab(this.tabId, "GotoID", {
-          id: gotoID,
-          smoothScroll: this.smoothScroll
-        });
-      }catch(e){
-        this.showMessage("Page is no longer available");
-        console.error(e);
-        return;
-      }
+    aElt.addEventListener("click", () => {
+      this.onSearchResutClicked(aElt, gotoID);
     });
 
     this.containerElt.appendChild(aElt);
+  }
+
+  async onSearchResutClicked(aElt, gotoID){
+    this.setSelectedResult(aElt);
+    try{
+      await browser.tabs.update(this.tabId, {
+        active: true
+      });
+      await Messaging.sendToTab(this.tabId, "GotoID", {
+        id: gotoID,
+        smoothScroll: this.smoothScroll
+      });
+    }catch(e){
+      this.showMessage("Page is no longer available");
+      console.error(e);
+      return;
+    }
+    this.onSelected.dispatch();
   }
 
   clear(){
@@ -158,20 +165,39 @@ class App{
 
     this.delay = new CancellableDelay;
     this.pageFinder = new PageFinder;
-    this.searchResultsUI = new SearchResultsUI(
-      document.getElementById("search-results-container"),
-      {
-        imageSize: this.imageSize,
-        smoothScroll: this.useSmoothScroll
-      }
-    );
+    this.searchResultsUI = this.createSearchResultsUI({
+      imageSize: this.imageSize,
+      smoothScroll: this.useSmoothScroll
+    });
+    this.lastSearchQuery = null;
     this.lastSearchTimestamp = new Timestamp;
     this.setupSearchInput();
     this.setupSearchOptions();
 
     this.camouflageMutex = new Mutex;
+
+    this.inputHistory = new InputHistory(
+      document.getElementById("search-text-datalist"),
+      {
+        storageKey: "history",
+        maxHistory: options.maxHistory,
+      }
+    );
   }
 
+  /** * @private **/
+  createSearchResultsUI(options){
+    const ui = new SearchResultsUI(
+      document.getElementById("search-results-container"),
+      options
+    );
+    ui.onSelected.addListener( () => {
+      this.inputHistory.add(this.lastSearchQuery);
+    });
+    return ui;
+  }
+
+  /** * @private **/
   setupSearchInput(){
     const inputElt = document.getElementById("search-text-input");
     inputElt.addEventListener("input", (e) => {
@@ -182,6 +208,7 @@ class App{
     });
   }
 
+  /** * @private **/
   setupSearchOptions(){
     const containerElt = document.getElementById("search-options-container");
     containerElt.addEventListener("change", (e) => {
@@ -232,6 +259,8 @@ class App{
       this.lastSearchTimestamp.update(); // finish existing preview listing
       return;
     }
+
+    this.lastSearchQuery = q;
 
     await this.showPreviews(tabId, {rectData, rangeData});
   }
