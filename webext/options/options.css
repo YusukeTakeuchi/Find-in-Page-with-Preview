@@ -13,9 +13,22 @@ section {
   padding : 0;
   border : 2px ridge gray;
   padding : 10px;
+  white-space : nowrap;
+  overflow: auto;
 }
 
 .lb {
   display : inline-block;
   width : 10em;
+}
+
+input[type="text"] {
+  width : 8em;
+}
+
+.shortcut-valid {
+  display : none;
+}
+.shortcut-invalid {
+  display : inline;
 }

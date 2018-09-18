@@ -44,6 +44,44 @@
       </section>
 
       <section>
+        <h2>Shortcut Keys</h2>
+        <div>
+          <span class="lb">Popup</span>
+          <label style="margin-right: 1em"><input type=checkbox name=shortcutPopupEnabled>Enabled</label>
+          <select name=shortcutPopupModifier>
+            <option value="">(None)</option>
+            <option value="Ctrl">Ctrl</option>
+            <option value="Alt">Alt</option>
+            <option value="Command">Command</option>
+            <option value="MacCtrl">MacCtrl</option>
+          </select> +
+          <select name=shortcutPopupModifier2>
+            <option value="">(None)</option>
+            <option value="Shift">Shift</option>
+          </select> +
+          <input type=text name=shortcutPopupKey list=shortcutKeys>
+          <span id="shortcut-popup-result" class="shortcut-valid" title="Invalid shortcut">❌</span>
+        </div>
+        <div>
+          <span class="lb">Sidebar</span>
+          <label style="margin-right: 1em"><input type=checkbox name=shortcutSidebarEnabled>Enabled</label>
+          <select name=shortcutSidebarModifier>
+            <option value="">(None)</option>
+            <option value="Ctrl">Ctrl</option>
+            <option value="Alt">Alt</option>
+            <option value="Command">Command</option>
+            <option value="MacCtrl">MacCtrl</option>
+          </select> +
+          <select name=shortcutSidebarModifier2>
+            <option value="">(None)</option>
+            <option value="Shift">Shift</option>
+          </select> +
+          <input type=text name=shortcutSidebarKey list=shortcutKeys>
+          <span id="shortcut-sidebar-result" class="shortcut-valid" title="Invalid shortcut">❌</span>
+        </div>
+      </section>
+
+      <section>
         <h2>History</h2>
         <div>
           <span class="lb">History size</span><input type=number name="maxHistory" min="0">
@@ -61,5 +99,69 @@
       </section>
 
     </form>
+
+    <datalist id=shortcutKeys>
+      <option value=A>
+      <option value=B>
+      <option value=C>
+      <option value=D>
+      <option value=E>
+      <option value=F>
+      <option value=G>
+      <option value=H>
+      <option value=I>
+      <option value=J>
+      <option value=K>
+      <option value=L>
+      <option value=M>
+      <option value=N>
+      <option value=O>
+      <option value=P>
+      <option value=Q>
+      <option value=R>
+      <option value=S>
+      <option value=T>
+      <option value=U>
+      <option value=V>
+      <option value=W>
+      <option value=X>
+      <option value=Y>
+      <option value=Z>
+      <option value=0>
+      <option value=1>
+      <option value=2>
+      <option value=3>
+      <option value=4>
+      <option value=5>
+      <option value=6>
+      <option value=7>
+      <option value=8>
+      <option value=9>
+      <option value=F1>
+      <option value=F2>
+      <option value=F3>
+      <option value=F4>
+      <option value=F5>
+      <option value=F6>
+      <option value=F7>
+      <option value=F8>
+      <option value=F9>
+      <option value=F10>
+      <option value=F11>
+      <option value=F12>
+      <option value=Comma>
+      <option value=Period>
+      <option value=Home>
+      <option value=End>
+      <option value=Pageup>
+      <option value=PageDown>
+      <option value=Space>
+      <option value=Insert>
+      <option value=Delete>
+      <option value=Up>
+      <option value=Down>
+      <option value=Left>
+      <option value=Right>
+    </datalist>
   </body>
 </html>

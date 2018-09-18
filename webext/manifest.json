@@ -48,6 +48,13 @@
     "default_panel": "find-window/index.html"
   },
 
+  "commands": {
+    "_execute_browser_action": {
+    },
+    "_execute_sidebar_action": {
+    }
+  },
+
   "background": {
     "scripts": [
       "util/messaging.js",

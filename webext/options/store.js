@@ -55,6 +55,16 @@ OptionStore = {
     bgColorSearchResult: "#ffeeee",
 
     maxHistory: 20,
+
+    shortcutPopupEnabled: false,
+    shortcutPopupModifier: "",
+    shortcutPopupModifier2: "",
+    shortcutPopupKey: "",
+
+    shortcutSidebarEnabled: false,
+    shortcutSidebarModifier: "",
+    shortcutSidebarModifier2: "",
+    shortcutSidebarKey: "",
   },
 
   storageKey: "options"
