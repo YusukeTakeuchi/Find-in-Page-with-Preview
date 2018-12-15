@@ -297,15 +297,15 @@ Messaging.receive({
     const inputElts = document.querySelectorAll(`input, textarea`);
     for (const elt of inputElts){
       if (typeof elt.value === "string"){
-        camouflageMap.set(elt, elt.disabled);
-        elt.disabled = true;
+        camouflageMap.set(elt, elt.style.visibility);
+        elt.style.visibility = "hidden";
       }
     }
   },
 
   onUncamouflageInputs(){
-    for (const [elt,disabled] of camouflageMap){
-      elt.disabled = disabled;
+    for (const [elt,visibility] of camouflageMap){
+      elt.style.visibility = visibility;
     }
     camouflageMap = null;
   },
