@@ -9,7 +9,7 @@ class PageFinder{
 
   /**
    * @param {string} q string to search for
-   * @param {Object} options options pass to browser.find.find()
+   * @param {Object} options options pass to browser.find.find() (tabId is required)
    * @return {count: number, rectData: RectData, rangeData: RangeData}
    **/
   async find(q, options){
@@ -45,7 +45,7 @@ class PageFinder{
     this.log("highlight start", time);
 
     // do not await to run highlighting asynchronously
-    browser.find.highlightResults();
+    browser.find.highlightResults({tabId: options.tabId});
 
     return result;
   }
