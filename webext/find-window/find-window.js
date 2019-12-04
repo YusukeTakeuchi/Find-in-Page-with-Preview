@@ -206,6 +206,14 @@ class App{
       }
       this.submit();
     });
+    inputElt.addEventListener("keydown", (e) => {
+      switch (e.key){
+        case "ArrowUp":
+        case "ArrowDown":
+          inputElt.blur();
+          break;
+      }
+    });
   }
 
   /** * @private **/
