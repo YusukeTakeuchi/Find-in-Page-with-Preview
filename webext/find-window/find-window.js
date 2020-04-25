@@ -11,12 +11,65 @@ class SearchResultsUI{
 
     this.flagWillClear = false; // whether clear() when add() is called
 
+    this.focusedResultElt = null;
     this.selectedResultElt = null;
     this.noPreviewImageURL = null;
 
     this.tabId = null;
 
     this.onSelected = new SimpleEvent;
+
+    this.setupKeyboardEvents();
+  }
+
+  setupKeyboardEvents(){
+    document.body.addEventListener("keydown", this.keyPressed.bind(this), false);
+  }
+
+  keyPressed(e){
+    switch (e.key){
+      case "Enter":
+        if (this.focusedResultElt){
+          this.focusedResultElt.click(); // TODO: make better
+        }
+        break;
+
+      case "ArrowUp":
+        doFocus(this, e, this.focusedResultElt == null
+            ? this.containerElt.lastElementChild
+            : this.focusedResultElt.previousSibling
+        );
+        break;
+
+      case "ArrowDown":
+        doFocus(this, e, this.focusedResultElt == null
+              ? this.containerElt.firstElementChild
+              : this.focusedResultElt.nextSibling
+        );
+        break;
+    }
+
+    function doFocus(_this, e, elt){
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (elt == null){
+        return;
+      }
+      _this.setFocusedResult(elt);
+      doScroll(elt);
+    }
+
+    function doScroll(aElt){
+      const actions = computeScrollIntoView(aElt, {
+        scrollMode: "if-needed",
+        block: "nearest",
+      });
+      for (const {el, top} of actions){
+        el.scrollTop = top;
+        // ignore horizontal scroll
+      }
+    }
   }
 
   setTabId(tabId){
@@ -69,6 +122,8 @@ class SearchResultsUI{
 
   clear(){
     this.containerElt.innerHTML = "";
+    this.focusedResultElt = null;
+    this.selectedResultElt = null;
   }
 
   /** clear() when next add() is called
@@ -89,7 +144,16 @@ class SearchResultsUI{
     }
   }
 
+  setFocusedResult(aElt){
+    if (this.focusedResultElt){
+      this.focusedResultElt.classList.remove("search-result-item-focused");
+    }
+    aElt.classList.add("search-result-item-focused");
+    this.focusedResultElt = aElt;
+  }
+
   setSelectedResult(aElt){
+    this.setFocusedResult(aElt);
     if (this.selectedResultElt){
       this.selectedResultElt.classList.remove("search-result-item-selected");
     }

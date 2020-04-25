@@ -135,6 +135,11 @@ body {
   border : 4px black solid;
 }
 
+.search-result-item-focused .search-result-item-img{
+  border-style : dashed;
+}
+
 .search-result-item-selected .search-result-item-img{
-  border : 4px red solid;
+  border-width : 4px;
+  border-color : red;
 }
