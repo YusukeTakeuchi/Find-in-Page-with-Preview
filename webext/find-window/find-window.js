@@ -436,7 +436,9 @@ function setStyles(options){
           "fgColorSearchForm",
           "bgColorSearchForm",
           "bgColorSearchFormHover",
-          "bgColorSearchResult"
+          "bgColorSearchResult",
+          "borderColor",
+          "borderColorSelected"
         ],
         root = document.documentElement;
 

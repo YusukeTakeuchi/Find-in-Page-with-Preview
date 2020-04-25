@@ -132,7 +132,7 @@ body {
   display : block;
   margin : 0;
   padding : 0;
-  border : 4px black solid;
+  border : 4px var(--borderColor) solid;
 }
 
 .search-result-item-focused .search-result-item-img{
@@ -141,5 +141,5 @@ body {
 
 .search-result-item-selected .search-result-item-img{
   border-width : 4px;
-  border-color : red;
+  border-color : var(--borderColorSelected);
 }

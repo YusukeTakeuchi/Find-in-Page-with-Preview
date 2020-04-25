@@ -54,6 +54,9 @@ OptionStore = {
 
     bgColorSearchResult: "#ffeeee",
 
+    borderColor: "#000000",
+    borderColorSelected: "#FF0000",
+
     maxHistory: 20,
 
     shortcutPopupEnabled: false,
