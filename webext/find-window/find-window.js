@@ -219,6 +219,7 @@ class App{
       };
 
     this.useSmoothScroll = options.useSmoothScroll;
+    this.useIncrementalSearch = options.useIncrementalSearch;
 
     if (options.popupMode){
       document.body.style.width = `${this.imageSize.width+40}px`;
@@ -268,13 +269,18 @@ class App{
       if (e.isComposing){
         return;
       }
-      this.submit();
+      if (this.useIncrementalSearch){
+        this.submit();
+      }
     });
     inputElt.addEventListener("keydown", (e) => {
       switch (e.key){
         case "ArrowUp":
         case "ArrowDown":
           inputElt.blur();
+          break;
+        case "Enter":
+          this.submit();
           break;
       }
     });
@@ -399,6 +405,10 @@ class App{
   }
 
   getDelayForQuery(q){
+    if (!this.useIncrementalSearch){
+      return 0;
+    }
+
     switch (q.length){
       case 1: return 800;
       case 2: return 400;

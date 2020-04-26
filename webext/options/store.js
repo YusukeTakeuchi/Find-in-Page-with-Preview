@@ -35,6 +35,8 @@ OptionStore = {
   },
 
   defaultValues  : {
+    useIncrementalSearch: true,
+
     useSmoothScroll: true,
 
     previewWidth: 400,
