@@ -43,6 +43,7 @@ OptionStore = {
     previewHeight: 150,
 
     imageSizeSameAsPreview: true,
+    imageSizeFitToWindow: true,
 
     imageWidth: 400,
     imageHeight : 150,

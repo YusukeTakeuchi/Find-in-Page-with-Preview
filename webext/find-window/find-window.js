@@ -4,10 +4,11 @@ class SearchResultsUI{
    * @param {Size2d} imageSize
    * @param {boolean} smoothScroll
    **/
-  constructor(containerElt, {imageSize, smoothScroll}){
+  constructor(containerElt, {imageSize, smoothScroll, imageSizeFitToWindow}){
     this.containerElt = containerElt;
     this.imageSize = imageSize;
     this.smoothScroll = smoothScroll;
+    this.imageSizeFitToWindow = imageSizeFitToWindow;
 
     this.flagWillClear = false; // whether clear() when add() is called
 
@@ -170,6 +171,9 @@ class SearchResultsUI{
     imgElt.src = imgURL;
     imgElt.style.width = `${this.imageSize.width}px`
     imgElt.style.height = `${this.imageSize.height}px`;
+    if (this.imageSizeFitToWindow){
+      imgElt.style.maxWidth = '100%';
+    }
     //imgElt.title = JSON.stringify(previewRect) + this.containerElt.childNodes.length.toString();
     return imgElt;
   }
@@ -220,6 +224,7 @@ class App{
 
     this.useSmoothScroll = options.useSmoothScroll;
     this.useIncrementalSearch = options.useIncrementalSearch;
+    this.imageSizeFitToWindow = options.imageSizeFitToWindow;
 
     if (options.popupMode){
       document.body.style.width = `${this.imageSize.width+40}px`;
@@ -232,7 +237,8 @@ class App{
     this.pageFinder = new PageFinder;
     this.searchResultsUI = this.createSearchResultsUI({
       imageSize: this.imageSize,
-      smoothScroll: this.useSmoothScroll
+      smoothScroll: this.useSmoothScroll,
+      imageSizeFitToWindow: this.imageSizeFitToWindow,
     });
     this.lastSearchQuery = null;
     this.lastSearchTimestamp = new Timestamp;
