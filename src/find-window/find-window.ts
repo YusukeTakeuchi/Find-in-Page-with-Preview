@@ -1,10 +1,38 @@
+import computeScrollIntoView from 'compute-scroll-into-view';
+
+import { Size2d, Rect, ScreenshotResult, RectWithValue, ClusterRange } from '../types';
+import { SimpleEvent } from '../util/events';
+//import { Messaging } from '../util/messaging';
+import { Messages } from '../messages/messages';
+import { CancellableDelay } from '../util/cancellable-delay';
+import { Timestamp } from '../util/timestamp';
+import { Mutex } from '../util/mutex';
+
+import { PageFinder } from './finder';
+import { OptionObject, OptionStore } from '../options/store';
+import { Clusterer } from './clustering';
+import { InputHistory } from './history';
+
+type SearchResultsUIOptions = {
+  imageSize: Size2d,
+  smoothScroll: boolean,
+  imageSizeFitToWindow: boolean,
+};
+
 class SearchResultsUI{
-  /**
-   * @param {Element} containerElt
-   * @param {Size2d} imageSize
-   * @param {boolean} smoothScroll
-   **/
-  constructor(containerElt, {imageSize, smoothScroll, imageSizeFitToWindow}){
+  private containerElt: HTMLElement;
+  private imageSize: Size2d;
+  private smoothScroll: boolean;
+  private imageSizeFitToWindow: boolean;
+
+  private flagWillClear: boolean;
+  private focusedResultElt: HTMLElement | null;
+  private selectedResultElt: HTMLElement | null;
+  private noPreviewImageURL: string | null;
+  private tabId: number | null;
+  onSelected: SimpleEvent<void>;
+
+  constructor(containerElt: HTMLElement, {imageSize, smoothScroll, imageSizeFitToWindow}: SearchResultsUIOptions){
     this.containerElt = containerElt;
     this.imageSize = imageSize;
     this.smoothScroll = smoothScroll;
@@ -18,16 +46,16 @@ class SearchResultsUI{
 
     this.tabId = null;
 
-    this.onSelected = new SimpleEvent;
+    this.onSelected = new SimpleEvent<void>();
 
     this.setupKeyboardEvents();
   }
 
-  setupKeyboardEvents(){
+  setupKeyboardEvents(): void{
     document.body.addEventListener("keydown", this.keyPressed.bind(this), false);
   }
 
-  keyPressed(e){
+  keyPressed(e: KeyboardEvent): void{
     switch (e.key){
       case "Enter":
         if (this.focusedResultElt){
@@ -50,18 +78,18 @@ class SearchResultsUI{
         break;
     }
 
-    function doFocus(_this, e, elt){
+    function doFocus(_this: SearchResultsUI, e: KeyboardEvent, elt: Node | null){
       e.preventDefault();
       e.stopPropagation();
 
       if (elt == null){
         return;
       }
-      _this.setFocusedResult(elt);
-      doScroll(elt);
+      _this.setFocusedResult(elt as HTMLElement);
+      doScroll(elt as HTMLElement);
     }
 
-    function doScroll(aElt){
+    function doScroll(aElt: HTMLElement){
       const actions = computeScrollIntoView(aElt, {
         scrollMode: "if-needed",
         block: "nearest",
@@ -73,16 +101,11 @@ class SearchResultsUI{
     }
   }
 
-  setTabId(tabId){
+  setTabId(tabId: number): void{
     this.tabId = tabId;
   }
 
-  /**
-   * @param {Rect} previewRect
-   * @param {?string} imgURL
-   * @param {?} gotoID
-   **/
-  add(previewRect, imgURL, gotoID){
+  add(previewRect: Rect, imgURL: string | null, gotoID: number): void{
     if (this.flagWillClear){
       this.flagWillClear = false;
       this.clear();
@@ -103,13 +126,18 @@ class SearchResultsUI{
     this.containerElt.appendChild(aElt);
   }
 
-  async onSearchResutClicked(aElt, gotoID){
+  async onSearchResutClicked(aElt: HTMLElement, gotoID: number): Promise<void>{
+    if (this.tabId == null){
+      // should not happen
+      throw "tabId is null";
+    }
+
     this.setSelectedResult(aElt);
     try{
       await browser.tabs.update(this.tabId, {
         active: true
       });
-      await Messaging.sendToTab(this.tabId, "GotoID", {
+      await Messages.sendToTab(this.tabId, "GotoID", {
         id: gotoID,
         smoothScroll: this.smoothScroll
       });
@@ -121,7 +149,7 @@ class SearchResultsUI{
     this.onSelected.dispatch();
   }
 
-  clear(){
+  clear(): void{
     this.containerElt.innerHTML = "";
     this.focusedResultElt = null;
     this.selectedResultElt = null;
@@ -130,22 +158,28 @@ class SearchResultsUI{
   /** clear() when next add() is called
    *  This method can be used to avoid flickering.
    **/
-  willClear(){
+  willClear(): void{
     this.flagWillClear = true;
   }
 
-  async clearAll(){
+  async clearAll(): Promise<void>{
     this.clear();
+    if (this.tabId == null){
+      return;
+    }
     if (this.tabId !== (await getActiveTabId())){
       return;
     }
-    const {success} = await Messaging.sendToTab(this.tabId, "Reset");
-    if (success){
+    const result = await Messages.sendToTab(this.tabId, "Reset");
+    if (!result){
+      return;
+    }
+    if (result.success){
       browser.find.removeHighlighting();
     }
   }
 
-  setFocusedResult(aElt){
+  setFocusedResult(aElt: HTMLElement): void{
     if (this.focusedResultElt){
       this.focusedResultElt.classList.remove("search-result-item-focused");
     }
@@ -153,7 +187,7 @@ class SearchResultsUI{
     this.focusedResultElt = aElt;
   }
 
-  setSelectedResult(aElt){
+  setSelectedResult(aElt: HTMLElement): void{
     this.setFocusedResult(aElt);
     if (this.selectedResultElt){
       this.selectedResultElt.classList.remove("search-result-item-selected");
@@ -162,11 +196,8 @@ class SearchResultsUI{
     this.selectedResultElt = aElt;
   }
 
-  /**
-   * @private
-   **/
-  createPreviewImage(imgURL, previewRect){
-    const imgElt = document.createElement("IMG");
+  private createPreviewImage(imgURL: string, previewRect: Rect): HTMLElement{
+    const imgElt = document.createElement("img");
     imgElt.className = "search-result-item-img";
     imgElt.src = imgURL;
     imgElt.style.width = `${this.imageSize.width}px`
@@ -178,17 +209,14 @@ class SearchResultsUI{
     return imgElt;
   }
 
-  /**
-   * @private
-   **/
-  getNoPreviewImageURL(){
+  private getNoPreviewImageURL(): string{
     if (this.noPreviewImageURL){
       return this.noPreviewImageURL;
     }
-    const canvas = document.createElement("CANVAS");
+    const canvas = document.createElement("canvas");
     canvas.width = this.imageSize.width;
     canvas.height = this.imageSize.height;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d")!;
     ctx.textBaseline = "top";
     ctx.font = "24px serif";
     ctx.fillText("No preview available", 10, 10);
@@ -196,11 +224,8 @@ class SearchResultsUI{
     return this.noPreviewImageURL;
   }
 
-  /**
-   * @param {string} text
-   **/
-  showMessage(text){
-    const elt = document.getElementById("message-container");
+  showMessage(text: string){
+    const elt = document.getElementById("message-container")!;
     elt.textContent = text;
     elt.classList.add("message-show");
     elt.addEventListener("animationend", () => {
@@ -209,8 +234,24 @@ class SearchResultsUI{
   }
 }
 
+type AppOptions = OptionObject & { popupMode: boolean };
+
 class App{
-  constructor(options){
+  private previewSize: Size2d;
+  private imageSize: Size2d;
+  private useSmoothScroll: boolean;
+  private useIncrementalSearch: boolean;
+  private imageSizeFitToWindow: boolean;
+
+  private delay: CancellableDelay;
+  private pageFinder: PageFinder;
+  private searchResultsUI: SearchResultsUI;
+  private lastSearchQuery: string | null;
+  private lastSearchTimestamp: Timestamp;
+  private camouflageMutex: Mutex;
+  private inputHistory: InputHistory;
+
+  constructor(options: AppOptions){
     this.previewSize = {
       width: Math.max(options.previewWidth, 100),
       height: Math.max(options.previewHeight, 40),
@@ -248,7 +289,7 @@ class App{
     this.camouflageMutex = new Mutex;
 
     this.inputHistory = new InputHistory(
-      document.getElementById("search-text-datalist"),
+      document.getElementById("search-text-datalist")!,
       {
         storageKey: "history",
         maxHistory: options.maxHistory,
@@ -256,23 +297,23 @@ class App{
     );
   }
 
-  /** * @private **/
-  createSearchResultsUI(options){
+  private createSearchResultsUI(options: SearchResultsUIOptions): SearchResultsUI{
     const ui = new SearchResultsUI(
-      document.getElementById("search-results-container"),
+      document.getElementById("search-results-container")!,
       options
     );
     ui.onSelected.addListener( () => {
-      this.inputHistory.add(this.lastSearchQuery);
+      if (this.lastSearchQuery != null){
+        this.inputHistory.add(this.lastSearchQuery);
+      }
     });
     return ui;
   }
 
-  /** * @private **/
-  setupSearchInput(){
-    const inputElt = document.getElementById("search-text-input");
+  private setupSearchInput(): void{
+    const inputElt = document.getElementById("search-text-input")!;
     inputElt.addEventListener("input", (e) => {
-      if (e.isComposing){
+      if ((e as InputEvent).isComposing){
         return;
       }
       if (this.useIncrementalSearch){
@@ -292,41 +333,48 @@ class App{
     });
   }
 
-  /** * @private **/
-  setupSearchOptions(){
-    const containerElt = document.getElementById("search-options-container");
+  private setupSearchOptions(): void{
+    const containerElt = document.getElementById("search-options-container")!;
     containerElt.addEventListener("change", (e) => {
       this.submit();
     });
-    document.getElementById("search-options-toggle-show").addEventListener("change", (e) => {
-      document.getElementById("search-options-container").style.display = e.target.checked ? "block" : "none";
+    document.getElementById("search-options-toggle-show")!.addEventListener("change", (e) => {
+      document.getElementById("search-options-container")!.style.display = (e.target as HTMLInputElement).checked ? "block" : "none";
     });
 
-    document.getElementById("find-again-button").addEventListener("click", this.submit.bind(this));
-    document.getElementById("reset-button").addEventListener("click", this.reset.bind(this));
+    document.getElementById("find-again-button")!.addEventListener("click", this.submit.bind(this));
+    document.getElementById("reset-button")!.addEventListener("click", this.reset.bind(this));
   }
 
-  showResultCountMessage({q, count}){
-    document.getElementById("count-output").value = q === "" ? "" : `${count} matches`;
+  showResultCountMessage({q, count}: {q: string, count: number}){
+    (document.getElementById("count-output") as HTMLOutputElement).value = q === "" ? "" : `${count} matches`;
   }
 
-  submit(){
-    this.findStart( document.getElementById("search-text-input").value, {
-      caseSensitive: document.getElementById("case-sensitive-checkbox").checked,
-      entireWord: document.getElementById("entire-word-checkbox").checked,
+  submit(): void{
+    this.findStart( this.getInputElement("search-text-input").value, {
+      caseSensitive: this.getInputElement("case-sensitive-checkbox").checked,
+      entireWord: this.getInputElement("entire-word-checkbox").checked,
     });
+  }
+
+  getInputElement(id: string): HTMLInputElement{
+    return document.getElementById(id) as HTMLInputElement;
   }
 
   /**
-   * @param {string} q string to search
-   * @param {Object} options pass to browser.find.find()
+   * @param q string to search
+   * @param options pass to browser.find.find()
    **/
-  async findStart(q, findOptions){
+  async findStart(q: string, findOptions: Partial<browser.find.FindOptions>): Promise<void>{
     if (!await this.delay.cancelAndExecute(this.getDelayForQuery(q))){
       return;
     }
 
     const tabId = await getActiveTabId();
+    if (tabId == null){
+      console.log("Cannot get an active tab");
+      return;
+    }
 
     const findResultPromise = this.findWithCamouflage(q, tabId, findOptions);
 
@@ -334,11 +382,12 @@ class App{
       return;
     }
 
-    const {count=0, rectData, rangeData} = (await findResultPromise) || {};
+    const findResult = await findResultPromise;
+    const count = findResult == null ? 0 : findResult.count;
 
     this.showResultCountMessage({q, count});
 
-    if (count === 0){ // not found or query is empty
+    if (findResult == null || count === 0){ // not found or query is empty
       this.searchResultsUI.clear();
       this.lastSearchTimestamp.update(); // finish existing preview listing
       return;
@@ -346,25 +395,32 @@ class App{
 
     this.lastSearchQuery = q;
 
+    const { rectData, rangeData } = findResult;
+    if (typeof rectData == "undefined"){
+      throw "rectData is undefined (shoud be a bug)";
+    }
+    if (typeof rangeData == "undefined"){
+      throw "rangeData is undefined (shoud be a bug)";
+    }
     await this.showPreviews(tabId, {rectData, rangeData});
   }
 
-  /**
-   * @private
-   **/
-  async findWithCamouflage(q, tabId, findOptions){
+  private async findWithCamouflage(q: string, tabId: number, findOptions: Partial<browser.find.FindOptions>){
     return this.camouflageMutex.transact( async () => {
       try{
-        await Messaging.sendToTab(tabId, "CamouflageInputs", q);
+        await Messages.sendToTab(tabId, "CamouflageInputs", q);
         return await this.pageFinder.find(q, {tabId, ...findOptions});
       }finally{
-        await Messaging.sendToTab(tabId, "UncamouflageInputs");
+        await Messages.sendToTab(tabId, "UncamouflageInputs");
       }
     });
   }
 
-  async showPreviews(tabId, {rectData, rangeData}){
-    await Messaging.sendToTab(tabId, "Start");
+  async showPreviews(tabId: number, {rectData, rangeData}: {
+    rectData: browser.find.RectData[],
+    rangeData: browser.find.RangeData[],
+  }): Promise<void>{
+    await Messages.sendToTab(tabId, "Start");
 
     const startTime = Date.now();
 
@@ -390,27 +446,26 @@ class App{
     console.log(`All preview images created in ${(finishTime-startTime)/1000} sec`);
   }
 
-  getClusterSize(){
+  getClusterSize(): Size2d{
     return {
       width : Math.max(this.previewSize.width - 40, 0),
       height: Math.max(this.previewSize.height - 20, 0),
     };
   }
 
-  /**
-   * @param {number} tabId
-   * @param {ClusterRange} clusterRange
-   * @return {ScreenshotResult}
-   **/
-  async takeScreenshotForCluster(tabId, clusterRange){
-    return Messaging.sendToTab(tabId, "Screenshot", {
+  async takeScreenshotForCluster(tabId: number, clusterRange: ClusterRange): Promise<ScreenshotResult>{
+    const result = await Messages.sendToTab(tabId, "Screenshot", {
       clusterRect: clusterRange.rect,
       ranges: clusterRange.ranges,
       ssSize: this.previewSize,
     });
+    if (!result){
+      throw "Cannot take screenshot";
+    }
+    return result;
   }
 
-  getDelayForQuery(q){
+  getDelayForQuery(q: string): number{
     if (!this.useIncrementalSearch){
       return 0;
     }
@@ -423,15 +478,15 @@ class App{
     }
   }
 
-  reset(){
-    document.getElementById("search-text-input").value = "";
+  reset(): void{
+    (document.getElementById("search-text-input") as HTMLInputElement).value = "";
     this.searchResultsUI.clearAll();
     this.lastSearchTimestamp.update();
-    document.getElementById("count-output").value = "";
+    (document.getElementById("count-output") as HTMLInputElement).value = "";
   }
 }
 
-async function startApp(){
+async function startApp(): Promise<void>{
   const options = await OptionStore.load(),
         searchParams = new URLSearchParams(location.search);
 
@@ -439,33 +494,31 @@ async function startApp(){
 
   new App({
     ...options,
-    popupMode: parseInt(searchParams.get("popup")) > 0,
+    popupMode: parseInt(searchParams.get("popup") || "") > 0,
   });
 }
 
 startApp();
 
-function setStyles(options){
-  const propNames = [
-          "fgColorInput",
-          "bgColorInput",
-          "fgColorSearchForm",
-          "bgColorSearchForm",
-          "bgColorSearchFormHover",
-          "bgColorSearchResult",
-          "borderColor",
-          "borderColorSelected"
-        ],
-        root = document.documentElement;
-
-  for (const propName of propNames){
-    root.style.setProperty("--" + propName, options[propName]);
+function setStyles(options: OptionObject){
+  const keys = {
+    "fgColorInput": true,
+    "bgColorInput": true,
+    "fgColorSearchForm": true,
+    "bgColorSearchForm": true,
+    "bgColorSearchFormHover": true,
+    "bgColorSearchResult": true,
+    "borderColor": true,
+    "borderColorSelected": true,
+  };
+  for (const propName of (Object.keys(keys) as (keyof typeof keys)[])){
+    document.documentElement.style.setProperty("--" + propName, options[propName]);
   }
 }
 
-function makeClusterRanges(rectData, rangeData, clusterSize){
-  const yesRects = [], // Array.<RectWithValue>
-        noRectIndices = []; // Array.<number>
+function makeClusterRanges(rectData: browser.find.RectData[], rangeData: browser.find.RangeData[], clusterSize: Size2d): ClusterRange[]{
+  const yesRects: RectWithValue<number>[] = [],
+        noRectIndices: number[] = [];
 
   rectData.forEach( (rdElt,i) => {
     if (rangeData[i].framePos !== 0){
@@ -485,7 +538,7 @@ function makeClusterRanges(rectData, rangeData, clusterSize){
     }
   });
 
-  return Clusterer.execute(yesRects, clusterSize).map( (cluster) => (
+  return Clusterer.execute(yesRects, clusterSize).map<ClusterRange>( (cluster) => (
     {
       indices: cluster.values,
       rect: cluster,
@@ -505,11 +558,15 @@ function makeClusterRanges(rectData, rangeData, clusterSize){
   );
 }
 
-async function getActiveTabId(){
+async function getActiveTabId(): Promise<number | null>{
   const [tab, ...rest] = await browser.tabs.query({
     active: true,
     currentWindow: true,
   });
   console.assert(rest.length === 0, "multiple active tabs");
-  return  tab && tab.id;
+  if (tab && tab.id != null){
+    return tab.id;
+  }else{
+    return null;
+  }
 }

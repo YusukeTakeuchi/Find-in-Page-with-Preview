@@ -1,16 +1,22 @@
-class InputHistory{
-  constructor(datasetElt, {storageKey, maxHistory}){
-    this.datasetElt = datasetElt;
+type DatasetElement = HTMLElement & { children: NodeListOf<HTMLOptionElement> };
+
+export class InputHistory{
+  private readonly datasetElt: DatasetElement;
+  private readonly storageKey: string;
+  private readonly maxHistory: number;
+
+  constructor(datasetElt: HTMLElement, {storageKey, maxHistory}: {storageKey: string, maxHistory: number}){
+    this.datasetElt = datasetElt as DatasetElement;
     this.storageKey = storageKey;
     this.maxHistory = maxHistory;
 
     this.loadHistory();
   }
 
-  async add(q){
+  async add(q: string): Promise<void>{
     await this.loadHistory()
 
-    let optionEltToPrepend;
+    let optionEltToPrepend: HTMLOptionElement | null = null;
     for (const option of Array.from(this.datasetElt.children)){
       if (option.value === q){
         option.remove();
@@ -24,13 +30,13 @@ class InputHistory{
     }
     this.datasetElt.insertAdjacentElement("afterbegin", optionEltToPrepend);
     while (this.datasetElt.children.length > this.maxHistory){
-      this.datasetElt.lastElementChild.remove();
+      this.datasetElt.lastElementChild!.remove();
     }
 
     await this.saveHistory();
   }
 
-  async saveHistory(){
+  async saveHistory(): Promise<void>{
     const items = Array.from(this.datasetElt.children).map( (optionElt) =>
       optionElt.value
     ).slice(0, this.maxHistory);
@@ -39,7 +45,7 @@ class InputHistory{
     });
   }
 
-  async loadHistory(){
+  async loadHistory(): Promise<void>{
     const {[this.storageKey]: rawItems} = await browser.storage.local.get({
       [this.storageKey]: []
     });

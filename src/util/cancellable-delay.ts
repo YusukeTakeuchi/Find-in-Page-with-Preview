@@ -1,30 +1,36 @@
-class CancellableDelay{
+const Cancelled = Symbol("Cancelled");
+
+export class CancellableDelay{
+  private timer: number | null;
+
+  private lastExecutionReject: ((c: typeof Cancelled) => void) | null;
+
   constructor(){
     this.timer = null;
     this.lastExecutionReject = null;
   }
 
   cancel(){
-    if (this.timer != null){
+    if (this.timer != null && this.lastExecutionReject != null){
       clearTimeout(this.timer);
-      this.lastExecutionReject(CancellableDelay.Cancelled);
+      this.lastExecutionReject(Cancelled);
       this.timer = null;
       this.lastExecutionReject = null;
     }
   }
 
   /** Cancel the previous execution and run new one
-   *  @param {number} ms milliseconds to be delayed
-   *  @return {Promise.<boolean>} A Promise resolved ms milliseconds later,
+   *  @param ms milliseconds to be delayed
+   *  @return A Promise resolved ms milliseconds later,
    *      populated with false if canceled, true otherwise.
    **/
-  async cancelAndExecute(ms){
+  async cancelAndExecute(ms: number): Promise<boolean>{
     this.cancel();
 
     try{
       await new Promise((resolve,reject) => {
         this.lastExecutionReject = reject;
-        this.timer = setTimeout(() => {
+        this.timer = window.setTimeout(() => {
           resolve();
         }, ms);
       });
@@ -32,7 +38,7 @@ class CancellableDelay{
       this.timer = null;
       return true;
     }catch(e){
-      if (e === CancellableDelay.Cancelled){
+      if (e === Cancelled){
         return false;
       }else{
         // this should not happen
@@ -42,4 +48,3 @@ class CancellableDelay{
   }
 }
 
-CancellableDelay.Cancelled = Symbol("Cancelled");

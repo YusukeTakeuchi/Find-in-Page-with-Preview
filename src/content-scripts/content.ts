@@ -1,86 +1,92 @@
-/**
- * @typedef {Object} Box
- * @property {number} left
- * @property {number} top
- * @property {number} right
- * @property {number} bottom
- **/
+import { Rect, Size2d, ScreenshotResult } from '../types';
+import { Messages } from "../messages/messages"
 
-PreviewMargin = {
+type Box = {
+  left: number,
+  top: number,
+  right: number,
+  bottom: number
+};
+
+type NodeAndOffset = [Node, number];
+
+const PreviewMargin = {
   width: 20,
   height : 10
 };
 
 /** Take the screenshot for the specified range.
  *
- * @param {Rect} rect
- * @return {string} Data URL of the image
+ * @param x
+ * @param y
+ * @param w
+ * @param h
+ * @return Data URL of the image
  **/
-function screenshot({x,y,w,h}){
+function screenshot({x,y,w,h}: Rect): string{
   const canvas = document.createElement("canvas");
 
   canvas.width = w;
   canvas.height = h;
 
   const ctx = canvas.getContext('2d');
+  // @ts-ignore
   ctx.drawWindow(window, x, y, w, h, "rgb(255,255,255)");
   return canvas.toDataURL("image/png");
 }
 
 class FindResultContext{
+
+  private documentTextNodes: Text[];
+
+  private resultRanges: Range[];
+
+  private targetElements: Element[];
+
   constructor(){
-    /** @type {Array.<Text>} **/
     this.documentTextNodes = this.collectTextNodes();
-
-    /** @type {Array.<Range>} **/
     this.resultRanges = [];
-
-    /** @type {Array.<Element>} **/
     this.targetElements = [];
   }
 
-  /**
-   * @return {Array.<Text>}
-   * @private
-   **/
-  collectTextNodes(){
-    const textNodes = [];
+  private collectTextNodes(): Text[]{
+    const textNodes: Text[] = [];
     const walker = document.createTreeWalker(document, NodeFilter.SHOW_TEXT, null, false);
-    let node;
+    let node: Node | null;
     while(node = walker.nextNode()){
-      textNodes.push(node);
+      textNodes.push(node as Text);
     }
     return textNodes;
   }
 
   /** Register result range and return ID
-   * @param {Range} range
-   * @param {number}
+   * @param range
    **/
-  registerRange(range){
+  registerRange(range: Range): number{
     this.resultRanges.push(range);
     return this.resultRanges.length - 1;
   }
 
   /**
-   * @param {number} id
-   * @return {Range}
+   * @param id
+   * @return
    **/
-  getRange(id){
+  getRange(id: number): Range{
     return this.resultRanges[id];
   }
 
+
   /**
-   * @param {Array.<RangeDataElement>} ranges
-   * @return {Range}
+   * @param ranges
+   * @return
    **/
-  createRangeFromFindRanges(ranges){
+  createRangeFromFindRanges(ranges: browser.find.RangeData[]): Range{
     const domRange = document.createRange();
     let initialized = false;
 
     for (const range of ranges){
-      const startPoint = [this.documentTextNodes[range.startTextNodePos], range.startOffset],
-            endPoint = [this.documentTextNodes[range.endTextNodePos], range.endOffset];
+      const startPoint: NodeAndOffset = [this.documentTextNodes[range.startTextNodePos], range.startOffset],
+            endPoint: NodeAndOffset = [this.documentTextNodes[range.endTextNodePos], range.endOffset];
       if (!initialized || domRange.comparePoint(...startPoint) < 0){
         domRange.setStart(...startPoint);
       }
@@ -94,24 +100,22 @@ class FindResultContext{
   }
 
   /**
-   * @param {number} id
-   * @param {boolean} smoothScroll
+   * @param id
+   * @param smoothScroll
    **/
-  gotoResult(id, {smoothScroll=true}){
+  gotoResult(id: number, {smoothScroll=true}): void{
     if (this.targetElements[id] == null){
       this.targetElements[id] = this.createTargetElement(id);
     }
     this.targetElements[id].scrollIntoView({
+      // @ts-ignore
       behavior: smoothScroll ? "smooth" : "instant",
       block: "center",
       inline: "end"
     });
   }
 
-  /**
-   * @private
-   **/
-  createTargetElement(id){
+  private createTargetElement(id: number): HTMLElement{
     const targetElt = document.createElement("SPAN"),
           range = this.getRange(id);
     if (range == null){
@@ -142,16 +146,23 @@ class FindResultContext{
    *     - The distance between R's center pos and the center pos of the found ranges is minimized
    *
    * Do the same for y.
-   *
-   * @private
    **/
-  computeScreenshotStartPosForClusterCommon(xory, clusterRect, ranges, ssSize){
-    const {x, w, left, right, width, scrollWidth} = {
-      x: { x: "x", w: "w", left: "left", right: "right", width: "width", scrollWidth: "scrollWidth", },
-      y: { x: "y", w: "h", left: "top", right: "bottom", width: "height", scrollWidth: "scrollHeight" }
-    }[xory] || ( () => { throw "x or y" } )();
+  private computeScreenshotStartPosForClusterCommon(
+      xory: "x" | "y",
+      clusterRect: Rect,
+      ranges: browser.find.RangeData[],
+      ssSize: Size2d
+  ): number{
+    const horizontal = (xory == "x");
 
-    const clusterCenter = clusterRect[x] + clusterRect[w]/2;
+    const x = horizontal ? "x" : "y",
+         w = horizontal ? "w" : "h",
+         left = horizontal ? "left" : "top",
+         right = horizontal ? "right" : "bottom",
+         width = horizontal ? "width" : "height",
+         scrollWidth = horizontal ? "scrollWidth" : "scrollHeight";
+
+    const clusterCenter: number = clusterRect[x] + clusterRect[w]/2;
 
     let xRangeContained = { // SS contains this
           [left]: Math.max(0, clusterRect[x] - PreviewMargin[width]),
@@ -162,11 +173,11 @@ class FindResultContext{
 
     const baseElt = commonAncestorElement(this.createRangeFromFindRanges(ranges));
 
-    for (let currentElement = baseElt;
-          currentElement && currentElement.nodeType === Node.ELEMENT_NODE;
+    for (let currentElement: Node | null = baseElt;
+          currentElement != null && currentElement.nodeType === Node.ELEMENT_NODE;
           currentElement = currentElement.parentNode
     ){
-      const eltBox = getElementBox(currentElement),
+      const eltBox = getElementBox(currentElement as HTMLElement),
             newLeft = Math.min(xRangeContained[left], eltBox[left]),
             newRight = Math.max(xRangeContained[right], eltBox[right]),
             newWidth = newRight - newLeft;
@@ -205,18 +216,12 @@ class FindResultContext{
 
     return cx - ssSize[width]/2;
 
-    function clamp(val, min, max){
+    function clamp(val: number, min: number, max: number): number{
       return Math.max(min, Math.min(val, max));
     }
   }
 
-  /**
-   * @param {Rect} clusterRect
-   * @param {Array.<RangeDataElement>} ranges
-   * @param {Size2d} ssSize
-   * @return {Rect}
-   **/
-  computeScreenshotRectForClusterRect(clusterRect, ranges, ssSize){
+  computeScreenshotRectForClusterRect(clusterRect: Rect, ranges: browser.find.RangeData[], ssSize: Size2d): Rect{
     return {
       x: this.computeScreenshotStartPosForClusterCommon("x", clusterRect, ranges, ssSize),
       y: this.computeScreenshotStartPosForClusterCommon("y", clusterRect, ranges, ssSize),
@@ -225,33 +230,31 @@ class FindResultContext{
     };
   }
 }
-let context = null;
+
+let context: FindResultContext | null = null;
 
 /**
- * @param {Range} range
- * @return {Element}
+ * @param range
+ * @return 
  **/
-function commonAncestorElement(range){
+function commonAncestorElement(range: Range): HTMLElement {
   const node = range.commonAncestorContainer;
-  return node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+  return (node.nodeType === Node.TEXT_NODE ? node.parentNode : node) as HTMLElement;
 }
-
-
 
 /**
  * @see {@link http://uhyo.hatenablog.com/entry/2017/03/15/130825}
  *
- * @param {Element} elt
+ * @param elt
  **/
-function getElementBox(elt){
+function getElementBox(elt: HTMLElement): Box{
   return getPageBox(elt.getBoundingClientRect());
 }
 
 /**
- * @param {DOMRect} domRect value returned by getClientRects()[] or getBoundingClientRect()
- * @return {Box}
+ * @param domRect value returned by getClientRects()[] or getBoundingClientRect()
  **/
-function getPageBox(domRect){
+function getPageBox(domRect: DOMRect): Box{
   const {left, top, width, height} = domRect,
         {left: bleft, top: btop} = document.body.getBoundingClientRect();
   return {
@@ -262,11 +265,7 @@ function getPageBox(domRect){
   };
 }
 
-/**
- * @param {Box} box
- * @return {Rect}
- **/
-function boxToRect(box){
+function boxToRect(box: Box): Rect{
   return {
     x: box.left,
     y: box.top,
@@ -275,15 +274,13 @@ function boxToRect(box){
   };
 }
 
-let camouflageMap;
+let camouflageMap: Map<HTMLElement, string> | null = null;
 
-Messaging.receive({
+const receiver = {
   /** Extremely dirty hack to work around FF's bug
    * @see {@link https://bugzilla.mozilla.org/show_bug.cgi?id=1448564}
-   *
-   * @param {string} q
    **/
-  onCamouflageInputs(q){
+  CamouflageInputs(q: string){
     if (camouflageMap != null){
       return;
     }
@@ -294,7 +291,7 @@ Messaging.receive({
       return;
     }
 
-    const inputElts = document.querySelectorAll(`input, textarea`);
+    const inputElts: NodeListOf<HTMLInputElement | HTMLTextAreaElement> = document.querySelectorAll(`input, textarea`);
     for (const elt of inputElts){
       if (typeof elt.value === "string"){
         camouflageMap.set(elt, elt.style.visibility);
@@ -303,32 +300,38 @@ Messaging.receive({
     }
   },
 
-  onUncamouflageInputs(){
+  UncamouflageInputs(){
+    if (camouflageMap == null){
+      return;
+    }
+
     for (const [elt,visibility] of camouflageMap){
       elt.style.visibility = visibility;
     }
     camouflageMap = null;
   },
 
-  onStart(){
+  Start(){
     context = new FindResultContext;
   },
 
-  /**
-   * @param {?Rect} clusterRect
-   * @param {Array.<RangeDataElement>} ranges
-   * @param {Size2d} ssSize
-   * @return {ScreenshotResult}
-   **/
-  async onScreenshot( {clusterRect, ranges, ssSize} ){
+  async Screenshot( {clusterRect, ranges, ssSize} :{
+    clusterRect: Rect | null,
+    ranges: browser.find.RangeData[],
+    ssSize: Size2d,
+  } ): Promise<ScreenshotResult>{
+    if (context == null){
+      return Promise.reject("not searched");
+    }
+
     if (clusterRect == null){
-      return this.registerRanges( {ranges, ssSize} );
+      return this.registerRanges(context, {ranges, ssSize} );
     }else{
-      return this.screenshotClusterRect( {clusterRect, ranges, ssSize} );
+      return this.screenshotClusterRect(context, {clusterRect, ranges, ssSize} );
     }
   },
 
-  async registerRanges( {ranges, ssSize}){
+  async registerRanges(context: FindResultContext, {ranges, ssSize}: {ranges: browser.find.RangeData[], ssSize: Size2d}): Promise<ScreenshotResult>{
     const domRange = context.createRangeFromFindRanges(ranges),
           gotoID = context.registerRange(domRange),
           cRect = boxToRect(getPageBox(domRange.getClientRects()[0])),
@@ -340,7 +343,7 @@ Messaging.receive({
     };
   },
 
-  async screenshotClusterRect( {clusterRect, ranges, ssSize} ){
+  async screenshotClusterRect(context: FindResultContext, {clusterRect, ranges, ssSize}: {clusterRect: Rect, ranges: browser.find.RangeData[], ssSize: Size2d} ): Promise<ScreenshotResult>{
     const gotoID = context.registerRange(context.createRangeFromFindRanges(ranges));
     const rect = context.computeScreenshotRectForClusterRect(clusterRect, ranges, ssSize);
     return {
@@ -350,24 +353,17 @@ Messaging.receive({
     };
   },
 
-  async onGoto({ x, y, w, h }){
-    const cx = x + w / 2,
-          cy = y + h / 2;
-    document.scrollingElement.scrollLeft = cx - window.innerWidth * 3 / 8;
-    document.scrollingElement.scrollTop = cy - window.innerHeight * 3 / 8;
-  },
-
-  async onGotoID( {id, smoothScroll} ){
+  async GotoID( {id, smoothScroll}: {id: number, smoothScroll: boolean} ){
     if (context == null){
       throw new Error("No match");
     }
     context.gotoResult(id, {smoothScroll});
   },
 
-  async onReset(){
+  async Reset(): Promise<{success: boolean}>{
     let success;
     if (context){
-      this.context = null;
+      context = null;
       success = true;
     }else{
       success = false;
@@ -376,9 +372,11 @@ Messaging.receive({
   },
 
   /** Check whether this page has been searched **/
-  async onPing(){
+  async Ping(): Promise<{result: boolean}>{
     return {
       result: context ? true: false,
     };
   },
-});
+};
+
+Messages.receive(receiver);

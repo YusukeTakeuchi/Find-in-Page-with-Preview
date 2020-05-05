@@ -1,6 +1,13 @@
 /** A simple wrapper for browser.find with basic mutual exclusion
  **/
-class PageFinder{
+
+import { Mutex } from '../util/mutex';
+
+export class PageFinder{
+  private readonly mutex: Mutex;
+  private lastFindStartTime: number | null;
+  private readonly outputLog: boolean;
+
   constructor({outputLog=false}={}){
     this.mutex = new Mutex;
     this.lastFindStartTime = null;
@@ -8,14 +15,14 @@ class PageFinder{
   }
 
   /**
-   * @param {string} q string to search for
-   * @param {Object} options options pass to browser.find.find() (tabId is required)
-   * @return {count: number, rectData: RectData, rangeData: RangeData}
+   * @param q string to search for
+   * @param options options pass to browser.find.find() (tabId is required)
+   * @return the result of browser.find.find
    **/
-  async find(q, options){
+  async find(q: string, options: Partial<browser.find.FindOptions> & { tabId: number }): Promise<browser.find.FindResults | null>{
     if (!q){ // reject empty string
       browser.find.removeHighlighting();
-      return;
+      return null;
     }
 
     const time = Date.now();
@@ -23,6 +30,7 @@ class PageFinder{
 
     const result = await this.mutex.transact( async () => {
       this.log("find start", time);
+      // @ts-ignore (the type definition of browser.find.find requires all of the options to be specified)
       const result = await browser.find.find(q, {
         includeRectData: true,
         includeRangeData: true,
@@ -39,21 +47,19 @@ class PageFinder{
 
     if (result.count === 0){
       browser.find.removeHighlighting();
-      return;
+      return null;
     }
 
     this.log("highlight start", time);
 
     // do not await to run highlighting asynchronously
+    // @ts-ignore (highlightResults requires tabId but type definitions miss it)
     browser.find.highlightResults({tabId: options.tabId});
 
     return result;
   }
 
-  /**
-   * @private
-   **/
-  log(...args){
+  private log(...args: any[]){
     if (this.outputLog){
       console.log(...args);
     }

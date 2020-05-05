@@ -5,6 +5,6 @@ browser.runtime.onConnect.addListener( (port) => {
   });
 });
 
-function resetFind(){
+function resetFind(): void{
   browser.find.removeHighlighting();
 }
