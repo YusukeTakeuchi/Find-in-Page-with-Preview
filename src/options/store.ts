@@ -35,6 +35,9 @@ const DefaultValues = {
   shortcutSidebarModifier: "",
   shortcutSidebarModifier2: "",
   shortcutSidebarKey: "",
+
+  showContextMenuPopup: true,
+  showContextMenuSidebar: false,
 };
 
 type OptionObject = typeof DefaultValues;

@@ -1,4 +1,5 @@
 import { DefaultValues, OptionStore } from './store';
+import { setupContextMenu } from "../context-menu/context-menu"
 
 type OptionObject = typeof DefaultValues;
 type OptionObjectPartial = Partial<OptionObject>;
@@ -23,6 +24,7 @@ async function initPage(): Promise<void>{
     saveOptions(form);
     setFormAttrs(form);
     updateShortcutKeys(form);
+    updateContextMenu(form);
   });
 }
 
@@ -157,4 +159,11 @@ async function updateShortcutKeys(form: OptionForm){
  **/
 function buildShortcutString(m1: string, m2: string, key: string): string{
   return [m1, m2, key].filter( item => item != null && item !== "").join("+");
+}
+
+function updateContextMenu(form: OptionForm){
+  setupContextMenu({
+    popup: getInputValue(form.elements["showContextMenuPopup"]) as boolean,
+    sidebar: getInputValue(form.elements["showContextMenuSidebar"]) as boolean,
+  })
 }

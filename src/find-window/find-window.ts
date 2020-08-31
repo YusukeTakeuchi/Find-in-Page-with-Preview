@@ -237,6 +237,8 @@ class SearchResultsUI{
 type AppOptions = OptionObject & { popupMode: boolean };
 
 class App{
+  private popupMode: boolean;
+
   private previewSize: Size2d;
   private imageSize: Size2d;
   private useSmoothScroll: boolean;
@@ -252,6 +254,8 @@ class App{
   private inputHistory: InputHistory;
 
   constructor(options: AppOptions){
+    this.popupMode = options.popupMode;
+
     this.previewSize = {
       width: Math.max(options.previewWidth, 100),
       height: Math.max(options.previewHeight, 40),
@@ -348,6 +352,15 @@ class App{
 
   showResultCountMessage({q, count}: {q: string, count: number}){
     (document.getElementById("count-output") as HTMLOutputElement).value = q === "" ? "" : `${count} matches`;
+  }
+
+  setQuery(q: string): void{
+    this.getInputElement("search-text-input").value = q;
+    this.submit();
+  }
+
+  async getWindowId(): Promise<number | undefined>{
+    return (await browser.windows.getCurrent()).id;
   }
 
   submit(): void{
@@ -492,7 +505,8 @@ async function startApp(): Promise<void>{
 
   setStyles(options)
 
-  new App({
+  //@ts-ignore
+  window["App"] = new App({
     ...options,
     popupMode: parseInt(searchParams.get("popup") || "") > 0,
   });
