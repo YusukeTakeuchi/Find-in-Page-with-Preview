@@ -1,5 +1,6 @@
 import { DefaultValues, OptionStore } from './store';
 import { setupContextMenu } from "../context-menu/context-menu"
+import { MessagesBG } from "../messages/messages"
 
 type OptionObject = typeof DefaultValues;
 type OptionObjectPartial = Partial<OptionObject>;
@@ -162,8 +163,8 @@ function buildShortcutString(m1: string, m2: string, key: string): string{
 }
 
 function updateContextMenu(form: OptionForm){
-  setupContextMenu({
+  MessagesBG.sendToBG("SetContextMenu", {
     popup: getInputValue(form.elements["showContextMenuPopup"]) as boolean,
     sidebar: getInputValue(form.elements["showContextMenuSidebar"]) as boolean,
-  })
+  });
 }

@@ -24,4 +24,14 @@ type IMessages = {
   Reset(): Promise<{ success: boolean}>,
 }
 
-export const Messages = new Messaging<IMessages>();
+type IMessagesBG = {
+  SetContextMenu(arg : { popup: boolean, sidebar: boolean }): void,
+}
+
+const Messages = new Messaging<IMessages>(),
+      MessagesBG = new Messaging<IMessagesBG>();
+
+export {
+  Messages,
+  MessagesBG,
+}

@@ -1,5 +1,6 @@
 import { OptionStore } from "../options/store"
 import { setupContextMenu } from "../context-menu/context-menu"
+import { MessagesBG } from "../messages/messages"
 
 function init(){
   /** Observe popup windows **/
@@ -23,5 +24,12 @@ async function initContextMenu(){
     sidebar: options.showContextMenuSidebar,
   });
 }
+
+MessagesBG.receive({
+  SetContextMenu({ popup, sidebar }){
+    // BG need to do this because the option page cannot execute commands after it is closed
+    setupContextMenu({ popup, sidebar });
+  }
+})
 
 init();
