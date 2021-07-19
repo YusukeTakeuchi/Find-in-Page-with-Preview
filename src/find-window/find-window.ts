@@ -388,6 +388,7 @@ class App{
 
   private setupSearchInput(): void{
     const inputElt = document.getElementById("search-text-input")!;
+    document.addEventListener("load", () => { inputElt.focus() });
     inputElt.addEventListener("input", (e) => {
       if ((e as InputEvent).isComposing){
         return;
