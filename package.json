@@ -1,6 +1,6 @@
 {
   "name": "find-in-page-with-preview",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Find in page and show preview images.",
   "scripts": {
     "build": "npx webpack"

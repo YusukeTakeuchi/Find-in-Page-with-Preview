@@ -1,12 +1,12 @@
 {
   "manifest_version": 2,
   "name": "Find in Page with Preview",
-  "version": "0.1.13",
+  "version": "0.1.14",
 
   "applications": {
     "gecko": {
       "id": "{ac77876d-57ef-4257-b009-3448c48646b4}",
-      "strict_min_version": "57.0"
+      "strict_min_version": "60.0"
     }
   },
 
