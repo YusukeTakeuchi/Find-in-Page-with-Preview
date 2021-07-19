@@ -13,4 +13,8 @@ export class Timestamp{
   isUpdatedSince(time: number): boolean{
     return this.lastUpdate > time;
   }
+
+  elapsedMillisecond(time: number = Date.now()): number{
+    return time - this.lastUpdate;
+  }
 }

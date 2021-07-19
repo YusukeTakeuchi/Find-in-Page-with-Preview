@@ -32,6 +32,10 @@ type ScreenshotResult = {
   url: string | null,
 }
 
+type ScreenshotResultMaybeError = ScreenshotResult | {
+  error: string,
+}
+
 export {
   Size2d,
   Rect,
@@ -39,4 +43,5 @@ export {
   RTreeLeaf,
   ClusterRange,
   ScreenshotResult,
+  ScreenshotResultMaybeError,
  };

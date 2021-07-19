@@ -33,7 +33,7 @@
     "css": [
       "content-scripts/main.css"
     ],
-    "run_at": "document_end"
+    "run_at": "document_idle"
   }],
 
   "browser_action": {

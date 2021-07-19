@@ -3,21 +3,35 @@ import computeScrollIntoView from 'compute-scroll-into-view';
 import { Size2d, Rect, ScreenshotResult, RectWithValue, ClusterRange } from '../types';
 import { SimpleEvent } from '../util/events';
 //import { Messaging } from '../util/messaging';
-import { Messages } from '../messages/messages';
+import { Messages,MessagesFindWindow } from '../messages/messages';
 import { CancellableDelay } from '../util/cancellable-delay';
 import { Timestamp } from '../util/timestamp';
 import { Mutex } from '../util/mutex';
 
 import { PageFinder } from './finder';
+import { FindResultCache } from './find-result-cache';
 import { OptionObject, OptionStore } from '../options/store';
 import { Clusterer } from './clustering';
 import { InputHistory } from './history';
+import { QueryData, QueryStore } from './query-store';
 
 type SearchResultsUIOptions = {
   imageSize: Size2d,
   smoothScroll: boolean,
   imageSizeFitToWindow: boolean,
 };
+
+type ExtraFindOptions = {
+  delay: number,
+  useCache: boolean,
+};
+
+class TextRangeError extends Error {
+  constructor(message: string){
+    super(message);
+    this.name = "TextRangeError";
+  }
+}
 
 class SearchResultsUI{
   private containerElt: HTMLElement;
@@ -244,14 +258,18 @@ class App{
   private useSmoothScroll: boolean;
   private useIncrementalSearch: boolean;
   private imageSizeFitToWindow: boolean;
+  private delayAfterMutation: number;
 
   private delay: CancellableDelay;
+  private pageChangeDelay: CancellableDelay;
   private pageFinder: PageFinder;
   private searchResultsUI: SearchResultsUI;
   private lastSearchQuery: string | null;
   private lastSearchTimestamp: Timestamp;
+  private lastFindStartTimestamp: Timestamp;
   private camouflageMutex: Mutex;
   private inputHistory: InputHistory;
+  private findResultCache: FindResultCache;
 
   constructor(options: AppOptions){
     this.popupMode = options.popupMode;
@@ -270,6 +288,7 @@ class App{
     this.useSmoothScroll = options.useSmoothScroll;
     this.useIncrementalSearch = options.useIncrementalSearch;
     this.imageSizeFitToWindow = options.imageSizeFitToWindow;
+    this.delayAfterMutation = 5000; // TODO: make configurable
 
     if (options.popupMode){
       document.body.style.width = `${this.imageSize.width+40}px`;
@@ -279,6 +298,7 @@ class App{
     browser.runtime.connect();
 
     this.delay = new CancellableDelay;
+    this.pageChangeDelay = new CancellableDelay;
     this.pageFinder = new PageFinder;
     this.searchResultsUI = this.createSearchResultsUI({
       imageSize: this.imageSize,
@@ -287,6 +307,8 @@ class App{
     });
     this.lastSearchQuery = null;
     this.lastSearchTimestamp = new Timestamp;
+    this.lastFindStartTimestamp = new Timestamp;
+    this.findResultCache = new FindResultCache;
     this.setupSearchInput();
     this.setupSearchOptions();
 
@@ -299,6 +321,56 @@ class App{
         maxHistory: options.maxHistory,
       }
     );
+
+    this.restoreQuery();
+
+    this.receivePageChangeMessages();
+  }
+
+  private receivePageChangeMessages(): void{
+    const app = this;
+    MessagesFindWindow.receive({
+      async NotifyMutation(isonload: boolean, { sender } : { sender: browser.runtime.MessageSender }){
+        console.log({ s: "mutation occured", isonload, sender });
+        if (sender.tab != null && sender.frameId === 0 && sender.tab.id === await getActiveTabId()){
+          app.pageChanged(isonload);
+        }
+      },
+    });
+    browser.tabs.onUpdated.addListener(async (tabId: number, { status } : { status?: string }) => {
+      if (status === "complete" && tabId === await getActiveTabId()){
+        app.pageChanged(true);
+      }
+      // @ts-ignore
+    }, { properties: ["status"] });
+    browser.tabs.onActivated.addListener(async ({ tabId }) => {
+      if (tabId === await getActiveTabId()){
+        app.pageChanged(true);
+      }
+    });
+  }
+
+  private async pageChanged(isonload: boolean): Promise<void>{
+    switch (this.getAutoSearchOption()){
+      case "none":
+        return;
+      case "on-page-load":
+        if (!isonload){
+          return;
+        }
+        break;
+    }
+
+    if (!isonload){
+      if (this.pageChangeDelay.isExecuting()){
+        return;
+      }
+      const delayMs = Math.max(0, this.delayAfterMutation - this.lastFindStartTimestamp.elapsedMillisecond());
+      if (!this.pageChangeDelay.cancelAndExecute(delayMs)){
+        return;
+      }
+    }
+    this.submit({ delay: 0, useCache: !isonload });
   }
 
   private createSearchResultsUI(options: SearchResultsUIOptions): SearchResultsUI{
@@ -340,13 +412,13 @@ class App{
   private setupSearchOptions(): void{
     const containerElt = document.getElementById("search-options-container")!;
     containerElt.addEventListener("change", (e) => {
-      this.submit();
+      this.searchOptionChanged(e);
     });
     document.getElementById("search-options-toggle-show")!.addEventListener("change", (e) => {
       document.getElementById("search-options-container")!.style.display = (e.target as HTMLInputElement).checked ? "block" : "none";
     });
 
-    document.getElementById("find-again-button")!.addEventListener("click", this.submit.bind(this));
+    document.getElementById("find-again-button")!.addEventListener("click", () => this.submit());
     document.getElementById("reset-button")!.addEventListener("click", this.reset.bind(this));
   }
 
@@ -359,15 +431,62 @@ class App{
     this.submit();
   }
 
+  private async restoreQuery(): Promise<void>{
+    const result = await QueryStore.load();
+    if (result != null){
+      this.getInputElement("search-text-input").value = result.query;
+      this.getInputElement("case-sensitive-checkbox").checked = result.caseSensitive;
+      this.getInputElement("entire-word-checkbox").checked = result.entireWord;
+      this.getInputElement("restore-last-query-checkbox").checked = true;
+      this.submit();
+    }
+  }
+
   async getWindowId(): Promise<number | undefined>{
     return (await browser.windows.getCurrent()).id;
   }
 
-  submit(): void{
-    this.findStart( this.getInputElement("search-text-input").value, {
+  private searchOptionChanged(e: Event): void{
+    if ((e.target as HTMLElement).dataset.noSubmit != null){
+      this.saveQueryMaybe();
+    }else{
+      this.submit();
+    }
+  }
+
+  private getAutoSearchOption(): "none" | "on-page-load" | "on-page-modify" {
+    return (document.getElementById("auto-search-select") as HTMLSelectElement).value as
+      "none" | "on-page-load" | "on-page-modify";
+  }
+
+  private getQuery(): QueryData{
+    const query = this.getInputElement("search-text-input").value
+    const findOptions = {
       caseSensitive: this.getInputElement("case-sensitive-checkbox").checked,
       entireWord: this.getInputElement("entire-word-checkbox").checked,
-    });
+    };
+    return {
+      query,
+      ...findOptions,
+    };
+  }
+
+  private saveQueryMaybe(): void{
+    const saveQuery = this.getInputElement("restore-last-query-checkbox").checked;
+    if (saveQuery){
+      QueryStore.save(this.getQuery());
+    }else{
+      QueryStore.save(null);
+    }
+  }
+
+  submit(options?: Partial<ExtraFindOptions>): void{
+    this.saveQueryMaybe();
+    const query = this.getQuery();
+    this.findWithRetry(query.query, {
+      caseSensitive: query.caseSensitive,
+      entireWord: query.entireWord,
+    }, options);
   }
 
   getInputElement(id: string): HTMLInputElement{
@@ -378,10 +497,41 @@ class App{
    * @param q string to search
    * @param options pass to browser.find.find()
    **/
-  async findStart(q: string, findOptions: Partial<browser.find.FindOptions>): Promise<void>{
-    if (!await this.delay.cancelAndExecute(this.getDelayForQuery(q))){
+  async findWithRetry(q: string,
+    findOptions: Partial<browser.find.FindOptions>,
+    extraFindOptions: Partial<ExtraFindOptions> = {}): Promise<void>{
+
+    const delay = extraFindOptions.delay == null ? this.getDelayForQuery(q) : extraFindOptions.delay;
+    if (!await this.delay.cancelAndExecute(delay)){
       return;
     }
+
+    const localDelay = new CancellableDelay;
+    const findStartTime = this.lastFindStartTimestamp.update();
+
+    let retryCount = 3;
+    while (retryCount > 0 && !this.lastFindStartTimestamp.isUpdatedSince(findStartTime)){
+      try{
+        return await this.findStart(q, findOptions, extraFindOptions);
+      }catch(e){
+        if (e instanceof TextRangeError){
+          console.log(`text range error: retry(${retryCount})`);
+          retryCount--;
+          await localDelay.cancelAndExecute(500);
+          continue;
+        }
+      }
+      break;
+    }
+  }
+
+  /**
+   * @param q string to search
+   * @param options pass to browser.find.find()
+   **/
+  private async findStart(q: string,
+    findOptions: Partial<browser.find.FindOptions>,
+    extraFindOptions: Partial<ExtraFindOptions> = {}): Promise<void>{
 
     const tabId = await getActiveTabId();
     if (tabId == null){
@@ -415,7 +565,12 @@ class App{
     if (typeof rangeData == "undefined"){
       throw "rangeData is undefined (shoud be a bug)";
     }
-    await this.showPreviews(tabId, {rectData, rangeData});
+    const findResultUpdated = this.findResultCache.update(rectData);
+    if (findResultUpdated || (extraFindOptions.useCache == null || !extraFindOptions.useCache)){
+      await this.showPreviews(tabId, {rectData, rangeData});
+    }else{
+      console.log({ msg: "using cache for preview images", findResultUpdated });
+    }
   }
 
   private async findWithCamouflage(q: string, tabId: number, findOptions: Partial<browser.find.FindOptions>){
@@ -448,6 +603,7 @@ class App{
       const {rect, url, gotoID} = await this.takeScreenshotForCluster(tabId, clusterRange);
 
       if (this.lastSearchTimestamp.isUpdatedSince(timestamp)){
+        console.log("last search timestamp updated while taking screenshots, exit");
         break;
       }
 
@@ -467,15 +623,23 @@ class App{
   }
 
   async takeScreenshotForCluster(tabId: number, clusterRange: ClusterRange): Promise<ScreenshotResult>{
-    const result = await Messages.sendToTab(tabId, "Screenshot", {
-      clusterRect: clusterRange.rect,
-      ranges: clusterRange.ranges,
-      ssSize: this.previewSize,
-    });
-    if (!result){
-      throw "Cannot take screenshot";
+    try{
+      const result = await Messages.sendToTab(tabId, "Screenshot", {
+        clusterRect: clusterRange.rect,
+        ranges: clusterRange.ranges,
+        ssSize: this.previewSize,
+      });
+      if (result == null){
+        throw "Cannot take screenshot";
+      }
+      if ('error' in result){
+        throw new TextRangeError(result.error);
+      }
+      return result;
+    }catch(e){
+      console.log({s: "takeScreenshotForCluster", e});
+      throw e;
     }
-    return result;
   }
 
   getDelayForQuery(q: string): number{

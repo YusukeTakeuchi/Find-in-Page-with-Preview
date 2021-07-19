@@ -1,5 +1,5 @@
-import { Rect, Size2d, ScreenshotResult } from '../types';
-import { Messages } from "../messages/messages"
+import { Rect, Size2d, ScreenshotResult, ScreenshotResultMaybeError } from '../types';
+import { Messages,MessagesFindWindow } from "../messages/messages"
 
 type Box = {
   left: number,
@@ -14,6 +14,13 @@ const PreviewMargin = {
   width: 20,
   height : 10
 };
+
+class TextRangeError extends Error {
+  constructor(message: string){
+    super(message);
+    this.name = "TextRangeError";
+  }
+}
 
 /** Take the screenshot for the specified range.
  *
@@ -35,6 +42,10 @@ function screenshot({x,y,w,h}: Rect): string{
   return canvas.toDataURL("image/png");
 }
 
+function notifyMutationToBG(isonload: boolean): void{
+  MessagesFindWindow.sendToBG("NotifyMutation", isonload);
+}
+
 class FindResultContext{
 
   private documentTextNodes: Text[];
@@ -47,6 +58,14 @@ class FindResultContext{
     this.documentTextNodes = this.collectTextNodes();
     this.resultRanges = [];
     this.targetElements = [];
+
+    const observerConfig = {
+      attributes: false,
+      childList: true,
+      subtree: true,
+    };
+    const observer = new MutationObserver(this.mutationObserverCallback.bind(this));
+    observer.observe(document.body, observerConfig);
   }
 
   private collectTextNodes(): Text[]{
@@ -84,16 +103,20 @@ class FindResultContext{
     const domRange = document.createRange();
     let initialized = false;
 
-    for (const range of ranges){
-      const startPoint: NodeAndOffset = [this.documentTextNodes[range.startTextNodePos], range.startOffset],
-            endPoint: NodeAndOffset = [this.documentTextNodes[range.endTextNodePos], range.endOffset];
-      if (!initialized || domRange.comparePoint(...startPoint) < 0){
-        domRange.setStart(...startPoint);
+    try{
+      for (const range of ranges){
+        const startPoint: NodeAndOffset = [this.documentTextNodes[range.startTextNodePos], range.startOffset],
+              endPoint: NodeAndOffset = [this.documentTextNodes[range.endTextNodePos], range.endOffset];
+        if (!initialized || domRange.comparePoint(...startPoint) < 0){
+          domRange.setStart(...startPoint);
+        }
+        if (!initialized || domRange.comparePoint(...endPoint) > 0){
+          domRange.setEnd(...endPoint);
+        }
+        initialized = true;
       }
-      if (!initialized || domRange.comparePoint(...endPoint) > 0){
-        domRange.setEnd(...endPoint);
-      }
-      initialized = true;
+    }catch(e){
+      throw new TextRangeError(e.message);
     }
 
     return domRange;
@@ -104,15 +127,14 @@ class FindResultContext{
    * @param smoothScroll
    **/
   gotoResult(id: number, {smoothScroll=true}): void{
-    if (this.targetElements[id] == null){
-      this.targetElements[id] = this.createTargetElement(id);
-    }
-    this.targetElements[id].scrollIntoView({
+    const targetElement = this.createTargetElement(id);
+    targetElement.scrollIntoView({
       // @ts-ignore
       behavior: smoothScroll ? "smooth" : "instant",
       block: "center",
       inline: "end"
     });
+    targetElement.remove();
   }
 
   private createTargetElement(id: number): HTMLElement{
@@ -150,7 +172,7 @@ class FindResultContext{
   private computeScreenshotStartPosForClusterCommon(
       xory: "x" | "y",
       clusterRect: Rect,
-      ranges: browser.find.RangeData[],
+      domRange: Range,
       ssSize: Size2d
   ): number{
     const horizontal = (xory == "x");
@@ -171,7 +193,7 @@ class FindResultContext{
         },
         xRangeContaining = null; // SS is contained by this
 
-    const baseElt = commonAncestorElement(this.createRangeFromFindRanges(ranges));
+    const baseElt = commonAncestorElement(domRange);
 
     for (let currentElement: Node | null = baseElt;
           currentElement != null && currentElement.nodeType === Node.ELEMENT_NODE;
@@ -221,13 +243,29 @@ class FindResultContext{
     }
   }
 
-  computeScreenshotRectForClusterRect(clusterRect: Rect, ranges: browser.find.RangeData[], ssSize: Size2d): Rect{
+  computeScreenshotRectForClusterRect(clusterRect: Rect, domRange: Range, ssSize: Size2d): Rect{
     return {
-      x: this.computeScreenshotStartPosForClusterCommon("x", clusterRect, ranges, ssSize),
-      y: this.computeScreenshotStartPosForClusterCommon("y", clusterRect, ranges, ssSize),
+      x: this.computeScreenshotStartPosForClusterCommon("x", clusterRect, domRange, ssSize),
+      y: this.computeScreenshotStartPosForClusterCommon("y", clusterRect, domRange, ssSize),
       w: ssSize.width,
       h: ssSize.height,
     };
+  }
+
+  private mutationObserverCallback(mutationList: MutationRecord[]): void {
+    // ignore if mutationList contains a fipwp target element
+    const doNotifyMutation = mutationList.every( (record) => {
+      if (record.type != "childList"){
+        return false;
+      }
+      const isFipwpAnchorElement = (node: Node) =>
+        (node.nodeType === Node.ELEMENT_NODE) && (node as Element).classList.contains("fipwp-goto-target-element");
+      return !Array.from(record.addedNodes).some(isFipwpAnchorElement);
+    });
+
+    if (doNotifyMutation){
+      notifyMutationToBG(false);
+    }
   }
 }
 
@@ -319,15 +357,24 @@ const receiver = {
     clusterRect: Rect | null,
     ranges: browser.find.RangeData[],
     ssSize: Size2d,
-  } ): Promise<ScreenshotResult>{
+  } ): Promise<ScreenshotResultMaybeError>{
     if (context == null){
       return Promise.reject("not searched");
     }
 
-    if (clusterRect == null){
-      return this.registerRanges(context, {ranges, ssSize} );
-    }else{
-      return this.screenshotClusterRect(context, {clusterRect, ranges, ssSize} );
+    try{
+      if (clusterRect == null){
+        return await this.registerRanges(context, {ranges, ssSize} );
+      }else{
+        return await this.screenshotClusterRect(context, {clusterRect, ranges, ssSize} );
+      }
+    }catch(e){
+      console.log({s: "Screenshot error", e});
+      if (e instanceof TextRangeError){
+        return {error: e.message};
+      }else{
+        throw e;
+      }
     }
   },
 
@@ -335,7 +382,7 @@ const receiver = {
     const domRange = context.createRangeFromFindRanges(ranges),
           gotoID = context.registerRange(domRange),
           cRect = boxToRect(getPageBox(domRange.getClientRects()[0])),
-          rect = context.computeScreenshotRectForClusterRect(cRect, ranges, ssSize);
+          rect = context.computeScreenshotRectForClusterRect(cRect, domRange, ssSize);
     return {
       gotoID,
       rect,
@@ -344,8 +391,9 @@ const receiver = {
   },
 
   async screenshotClusterRect(context: FindResultContext, {clusterRect, ranges, ssSize}: {clusterRect: Rect, ranges: browser.find.RangeData[], ssSize: Size2d} ): Promise<ScreenshotResult>{
-    const gotoID = context.registerRange(context.createRangeFromFindRanges(ranges));
-    const rect = context.computeScreenshotRectForClusterRect(clusterRect, ranges, ssSize);
+    const domRange = context.createRangeFromFindRanges(ranges);
+    const gotoID = context.registerRange(domRange);
+    const rect = context.computeScreenshotRectForClusterRect(clusterRect, domRange, ssSize);
     return {
       gotoID,
       rect,

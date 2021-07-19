@@ -22,6 +22,13 @@
           <label><input type=checkbox id="entire-word-checkbox">Entire Word</label>
           <button class="action-button" id="find-again-button" title="Find Again">▶️</button>
           <button class="action-button" id="reset-button" title="Reset">❎</button>
+          <br>
+          <label><input type=checkbox id="restore-last-query-checkbox" data-no-submit="1">Restore last query</label>
+          <select id="auto-search-select" title="auto search" data-no-submit="1">
+            <option value="none">Search manually</option>
+            <option value="on-page-load">Search on page load</option>
+            <option value="on-page-modify">Search on page load/modify</option>
+          </select>
         </div>
         <div id="message-container" class="message-state-none"></div>
       </div>

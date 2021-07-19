@@ -10,6 +10,10 @@ export class CancellableDelay{
     this.lastExecutionReject = null;
   }
 
+  isExecuting(){
+    return this.timer != null && this.lastExecutionReject != null;
+  }
+
   cancel(){
     if (this.timer != null && this.lastExecutionReject != null){
       clearTimeout(this.timer);
@@ -31,7 +35,7 @@ export class CancellableDelay{
       await new Promise((resolve,reject) => {
         this.lastExecutionReject = reject;
         this.timer = window.setTimeout(() => {
-          resolve();
+          resolve(null);
         }, ms);
       });
       this.lastExecutionReject = null;

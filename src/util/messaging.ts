@@ -37,7 +37,8 @@ export class Messaging<T extends Receiver>{
       if (method){
         return Promise.resolve(method.call(receiver, args, meta));
       }else{
-        return Promise.reject(`cannot handle message: ${command}`);
+        // just ignore unknown messages
+        //return Promise.reject(`cannot handle message: ${command}`);
       }
     });
   }
