@@ -45,7 +45,7 @@ async function openAndWaitForFindWindow(q: string, type: "popup" | "sidebar", wi
     for (const win of windows){
       // @ts-ignore
       const app = win.App;
-      if (app != null && (windowId == null || (await app.getWindowId()) == windowId )){
+      if (app != null && (windowId == null || (await app.getWindowId()) == windowId ) && app.isInitialized()){
         app.setQuery(q);
         break retry;
       }

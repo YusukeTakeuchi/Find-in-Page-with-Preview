@@ -251,6 +251,7 @@ class SearchResultsUI{
 type AppOptions = OptionObject & { popupMode: boolean };
 
 class App{
+  private initialized: boolean;
   private popupMode: boolean;
 
   private previewSize: Size2d;
@@ -272,6 +273,8 @@ class App{
   private findResultCache: FindResultCache;
 
   constructor(options: AppOptions){
+    this.initialized = false;
+
     this.popupMode = options.popupMode;
 
     this.previewSize = {
@@ -325,6 +328,8 @@ class App{
     this.restoreQuery();
 
     this.receivePageChangeMessages();
+
+    this.initialized = true;
   }
 
   private receivePageChangeMessages(): void{
@@ -430,6 +435,10 @@ class App{
   setQuery(q: string): void{
     this.getInputElement("search-text-input").value = q;
     this.submit();
+  }
+
+  isInitialized(): boolean{
+    return this.initialized;
   }
 
   private async restoreQuery(): Promise<void>{
