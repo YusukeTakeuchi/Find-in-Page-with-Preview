@@ -325,11 +325,11 @@ class App{
       }
     );
 
-    this.restoreQuery();
-
     this.receivePageChangeMessages();
 
-    this.initialized = true;
+    this.restoreQuery().then(() => {
+      this.initialized = true;
+    });
   }
 
   private receivePageChangeMessages(): void{
